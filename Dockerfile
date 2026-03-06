@@ -1,4 +1,4 @@
-FROM node:20-alpine as build
+FROM node:20-alpine as frontend-build
 
 WORKDIR /app
 
@@ -14,15 +14,23 @@ COPY . .
 # Build the app
 RUN npm run build
 
-# Production stage with nginx
-FROM nginx:alpine
+FROM python:3.11-slim as runtime
 
-# Copy built assets from build stage
-COPY --from=build /app/dist /usr/share/nginx/html
+WORKDIR /app
 
-# Copy nginx configuration
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
 
-EXPOSE 80
+# Install backend dependencies
+COPY backend/requirements.txt /app/backend/requirements.txt
+RUN pip install --no-cache-dir -r /app/backend/requirements.txt
 
-CMD ["nginx", "-g", "daemon off;"]
+# Copy backend source
+COPY backend /app/backend
+
+# Copy built frontend assets
+COPY --from=frontend-build /app/dist /app/dist
+
+EXPOSE 8000
+
+CMD ["sh", "-c", "uvicorn backend.main:app --host 0.0.0.0 --port ${PORT:-8000}"]

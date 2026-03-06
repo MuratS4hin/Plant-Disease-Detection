@@ -1,12 +1,20 @@
 from fastapi import FastAPI, File, UploadFile, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, FileResponse
+from fastapi.staticfiles import StaticFiles
 import uvicorn
 from PIL import Image
 import io
 import os
+from pathlib import Path
 
 app = FastAPI(title="Plant Disease Detection API")
+
+BASE_DIR = Path(__file__).resolve().parent.parent
+FRONTEND_DIST_DIR = BASE_DIR / "dist"
+
+if (FRONTEND_DIST_DIR / "assets").exists():
+    app.mount("/assets", StaticFiles(directory=str(FRONTEND_DIST_DIR / "assets")), name="assets")
 
 # Configure CORS
 app.add_middleware(
@@ -20,6 +28,9 @@ app.add_middleware(
 
 @app.get("/")
 async def root():
+    index_file = FRONTEND_DIST_DIR / "index.html"
+    if index_file.exists():
+        return FileResponse(str(index_file))
     return {"message": "Plant Disease Detection API is running"}
 
 
@@ -78,6 +89,22 @@ async def predict(image: UploadFile = File(...)):
         raise HTTPException(status_code=500, detail=f"Error processing image: {str(e)}")
 
 
+@app.get("/{full_path:path}", include_in_schema=False)
+async def serve_frontend(full_path: str):
+    if not FRONTEND_DIST_DIR.exists():
+        raise HTTPException(status_code=503, detail="Frontend build not found")
+
+    requested_file = FRONTEND_DIST_DIR / full_path
+    if full_path and requested_file.is_file():
+        return FileResponse(str(requested_file))
+
+    index_file = FRONTEND_DIST_DIR / "index.html"
+    if index_file.exists():
+        return FileResponse(str(index_file))
+
+    raise HTTPException(status_code=404, detail="Not Found")
+
+
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 8000))
-    uvicorn.run("main:app", host="0.0.0.0", port=port, reload=True)
+    uvicorn.run("backend.main:app", host="0.0.0.0", port=port, reload=True)
