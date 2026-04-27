@@ -1,5 +1,5 @@
 .app {
-  min-height: 100vh;
+  min-height: 90vh;
   display: grid;
   place-items: center;
   padding: 2rem;
@@ -53,6 +53,14 @@
 
 .upload-icon {
   font-size: 2.5rem;
+  margin-bottom: 1rem;
+}
+
+.upload-preview {
+  width: min(100%, 560px);
+  max-height: 260px;
+  object-fit: contain;
+  border-radius: 8px;
   margin-bottom: 1rem;
 }
 
@@ -112,24 +120,48 @@
   font-size: 0.9rem;
 }
 
-.output-box {
-  margin-top: 1.25rem;
-  padding: 1rem;
-  border-radius: 10px;
-  background: #f9fbfd;
-  border: 1px solid #dce7ef;
+.popup-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(16, 24, 40, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  z-index: 1000;
 }
 
-.output-box h2 {
-  margin: 0 0 0.75rem;
-  font-size: 1.1rem;
+.popup-card {
+  position: relative;
+  width: min(520px, 100%);
+  background: #fff;
+  border-radius: 18px;
+  padding: 2rem 1.5rem 1.5rem;
+  box-shadow: 0 24px 80px rgba(15, 23, 42, 0.25);
+}
+
+.popup-close {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.9rem;
+  border: none;
+  background: transparent;
+  font-size: 1.8rem;
+  line-height: 1;
+  color: #506172;
+  cursor: pointer;
+}
+
+.popup-title {
+  margin: 0 0 1rem;
+  font-size: 1.35rem;
   color: #1c3d57;
 }
 
-.output-box pre {
+.popup-description {
   margin: 0;
-  white-space: pre-wrap;
-  word-break: break-word;
   color: #22323f;
+  font-size: 1rem;
+  line-height: 1.7;
 }
 

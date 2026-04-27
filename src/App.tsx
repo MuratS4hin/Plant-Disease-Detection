@@ -1,20 +1,65 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import './App.css'
 
 const API_URL = import.meta.env.VITE_API_URL || '/predict'
+const IMAGE_MIME_PREFIX = 'image/'
+
+const isImageFile = (file: File) => file.type.startsWith(IMAGE_MIME_PREFIX)
 
 function App() {
   const [selectedImage, setSelectedImage] = useState<File | null>(null)
+  const [previewUrl, setPreviewUrl] = useState('')
   const [dragActive, setDragActive] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
-  const [output, setOutput] = useState<string>('')
   const [error, setError] = useState<string>('')
+  const [popupDescription, setPopupDescription] = useState<string>('')
+  const [popupConfidence, setPopupConfidence] = useState<number>(0)
+  const [isPopupOpen, setIsPopupOpen] = useState(false)
+
+  const resetMessages = () => {
+    setError('')
+    setPopupDescription('')
+    setPopupConfidence(0)
+    setIsPopupOpen(false)
+  }
+
+  const setImageAndReset = (file: File | null) => {
+    setSelectedImage(file)
+    resetMessages()
+  }
+
+  useEffect(() => {
+    if (!selectedImage) {
+      setPreviewUrl('')
+      return
+    }
+
+    const objectUrl = URL.createObjectURL(selectedImage)
+    setPreviewUrl(objectUrl)
+
+    return () => {
+      URL.revokeObjectURL(objectUrl)
+    }
+  }, [selectedImage])
 
   const handleImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0] ?? null
-    setSelectedImage(file)
-    setOutput('')
-    setError('')
+
+    if (!file) {
+      setImageAndReset(null)
+      return
+    }
+
+    if (!isImageFile(file)) {
+      setSelectedImage(null)
+      setError('Please select a valid image file.')
+      setPopupDescription('')
+      setPopupConfidence(0)
+      setIsPopupOpen(false)
+      return
+    }
+
+    setImageAndReset(file)
   }
 
   const handleDragOver = (event: React.DragEvent<HTMLDivElement>) => {
@@ -32,13 +77,14 @@ function App() {
     setDragActive(false)
 
     const droppedFile = event.dataTransfer.files?.[0] ?? null
-    if (droppedFile && droppedFile.type.startsWith('image/')) {
-      setSelectedImage(droppedFile)
-      setOutput('')
-      setError('')
-    } else {
+    if (!droppedFile || !isImageFile(droppedFile)) {
       setError('Please drop a valid image file.')
+      setPopupDescription('')
+      setPopupConfidence(0)
+      return
     }
+
+    setImageAndReset(droppedFile)
   }
 
   const handleScan = async () => {
@@ -48,8 +94,7 @@ function App() {
     }
 
     setIsLoading(true)
-    setError('')
-    setOutput('')
+    resetMessages()
 
     try {
       const formData = new FormData()
@@ -68,10 +113,18 @@ function App() {
 
       if (contentType.includes('application/json')) {
         const data = await response.json()
-        setOutput(JSON.stringify(data, null, 2))
+        const description = data?.prediction?.description
+        const confidence = Math.round(data?.prediction?.confidence * 100) / 100
+
+        if (typeof description !== 'string' || description.trim() === '') {
+          throw new Error('Description was not found in the API response.')
+        }
+
+        setPopupDescription(description)
+        setPopupConfidence(confidence)
+        setIsPopupOpen(true)
       } else {
-        const text = await response.text()
-        setOutput(text)
+        throw new Error('Unexpected response format from the API.')
       }
     } catch (requestError) {
       const message =
@@ -87,7 +140,7 @@ function App() {
   return (
     <main className="app">
       <section className="card">
-        <h1 className="title">scan your sick plant.</h1>
+        <h1 className="title">Bitki Hastalıklarının Tespiti</h1>
 
         <div
           className={`upload-box ${dragActive ? 'drag-active' : ''}`}
@@ -95,10 +148,16 @@ function App() {
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
         >
-          <p className="upload-text">Yüklemek İçin Dosyayı Sürükle</p>
-          <div className="upload-icon" aria-hidden="true">
-            ☁️
-          </div>
+          {previewUrl ? (
+            <img src={previewUrl} alt="Selected plant" className="upload-preview" />
+          ) : (
+            <>
+              <p className="upload-text">Yüklemek İçin Dosyayı Sürükle</p>
+              <div className="upload-icon" aria-hidden="true">
+                ☁️
+              </div>
+            </>
+          )}
 
           <label className="browse-button" htmlFor="plant-image-input">
             Gözat
@@ -115,20 +174,25 @@ function App() {
         </div>
 
         <button className="scan-button" onClick={handleScan} disabled={isLoading}>
-          {isLoading ? 'Scanning...' : 'Send for Scan'}
+          {isLoading ? 'Taranıyor...' : 'Taramak için Tıklayınız'}
         </button>
 
-        {selectedImage && <p className="selected-file">Selected: {selectedImage.name}</p>}
+        {/* {selectedImage && <p className="selected-file">Selected: {selectedImage.name}</p>} */}
 
         {error && <p className="error-text">{error}</p>}
-
-        {output && (
-          <div className="output-box">
-            <h2>Output</h2>
-            <pre>{output}</pre>
-          </div>
-        )}
       </section>
+
+      {isPopupOpen && (
+        <div className="popup-overlay" onClick={() => setIsPopupOpen(false)}>
+          <div className="popup-card" onClick={(event) => event.stopPropagation()}>
+            <button className="popup-close" onClick={() => setIsPopupOpen(false)} type="button">
+              ×
+            </button>
+            <p className="popup-description">Tahmin Edilen Sınıf: {popupDescription}</p>
+            <p className="popup-description">Güven Skoru: %{popupConfidence*100}</p>
+          </div>
+        </div>
+      )}
     </main>
   )
 }

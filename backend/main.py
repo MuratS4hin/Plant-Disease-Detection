@@ -1,6 +1,6 @@
 from fastapi import FastAPI, File, UploadFile, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, FileResponse
+from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 import uvicorn
 from PIL import Image
@@ -8,10 +8,16 @@ import io
 import os
 from pathlib import Path
 
+try:
+    from backend.predict import predict_image
+except ModuleNotFoundError:
+    from predict import predict_image
+
 app = FastAPI(title="Plant Disease Detection API")
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 FRONTEND_DIST_DIR = BASE_DIR / "dist"
+MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB in bytes
 
 if (FRONTEND_DIST_DIR / "assets").exists():
     app.mount("/assets", StaticFiles(directory=str(FRONTEND_DIST_DIR / "assets")), name="assets")
@@ -47,41 +53,34 @@ async def predict(image: UploadFile = File(...)):
     """
     try:
         # Validate file type
-        if not image.content_type.startswith("image/"):
+        if not image.content_type or not image.content_type.startswith("image/"):
             raise HTTPException(status_code=400, detail="File must be an image")
         
         # Read and validate image
         contents = await image.read()
         
         # Validate file size (10MB limit)
-        max_size = 10 * 1024 * 1024  # 10MB in bytes
-        if len(contents) > max_size:
+        if len(contents) > MAX_FILE_SIZE:
             raise HTTPException(status_code=400, detail="File size exceeds 10MB limit")
         
         try:
             img = Image.open(io.BytesIO(contents))
             width, height = img.size
-        except Exception as e:
+        except Exception:
             raise HTTPException(status_code=400, detail="Invalid image file")
         
-        # TODO: Add your model inference here
-        # Example placeholder response:
-        result = {
+        prediction = predict_image(img)
+
+        return {
             "status": "success",
             "filename": image.filename,
             "image_size": {
                 "width": width,
                 "height": height
             },
-            "prediction": {
-                "disease": "Healthy",  # Replace with actual prediction
-                "confidence": 0.95,     # Replace with actual confidence
-                "description": "Your plant appears to be healthy!"
-            },
-            "message": "Analysis complete. Replace this endpoint logic with your trained model."
+            "prediction": prediction,
+            "message": "Analysis complete."
         }
-        
-        return JSONResponse(content=result)
     
     except HTTPException:
         raise
@@ -107,4 +106,5 @@ async def serve_frontend(full_path: str):
 
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 8000))
-    uvicorn.run("backend.main:app", host="0.0.0.0", port=port, reload=True)
+    app_import_path = "main:app" if __package__ in (None, "") else "backend.main:app"
+    uvicorn.run(app_import_path, host="0.0.0.0", port=port, reload=True)
