@@ -3,8 +3,8 @@ import os
 from functools import lru_cache
 from pathlib import Path
 from typing import Any
-from urllib.request import urlretrieve
 
+import gdown
 import torch
 import torch.nn.functional as F
 from PIL import Image
@@ -254,11 +254,15 @@ def _download_model_weights() -> None:
 
     print(f"Downloading model weights from {model_url}...")
     WEIGHTS_PATH.parent.mkdir(parents=True, exist_ok=True)
-    
+
     try:
-        urlretrieve(model_url, WEIGHTS_PATH)
+        gdown.download(model_url, str(WEIGHTS_PATH), quiet=False, fuzzy=True)
+        if not WEIGHTS_PATH.exists() or WEIGHTS_PATH.stat().st_size < 1_000_000:
+            raise RuntimeError("Downloaded file is missing or too small — may be a Google Drive HTML page.")
         print(f"Model downloaded successfully to {WEIGHTS_PATH}")
     except Exception as e:
+        if WEIGHTS_PATH.exists():
+            WEIGHTS_PATH.unlink()
         raise RuntimeError(f"Failed to download model from {model_url}: {str(e)}")
 
 
