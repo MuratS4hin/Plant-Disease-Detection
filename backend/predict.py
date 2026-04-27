@@ -11,6 +11,12 @@ from PIL import Image
 from torch import nn
 from torchvision import transforms
 
+# Google Drive file ID: 1FZClmzR1UpZ-Ogw2rfj9GFP5hz7q-cN8
+# Use direct download URL format for Google Drive
+MODEL_WEIGHTS_URL = os.getenv(
+    "MODEL_WEIGHTS_URL",
+    "https://drive.google.com/uc?export=download&id=1FZClmzR1UpZ-Ogw2rfj9GFP5hz7q-cN8"
+)
 OUTPUT_DIM = 65
 MODEL_NAME = "siglip2"
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -237,7 +243,7 @@ def _download_model_weights() -> None:
     if WEIGHTS_PATH.exists():
         return
 
-    model_url = os.getenv("MODEL_WEIGHTS_URL")
+    model_url = MODEL_WEIGHTS_URL
     if not model_url:
         raise RuntimeError(
             "Model weights not found locally and no MODEL_WEIGHTS_URL environment variable set. "
