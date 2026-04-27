@@ -1,7 +1,9 @@
 import csv
+import os
 from functools import lru_cache
 from pathlib import Path
 from typing import Any
+from urllib.request import urlretrieve
 
 import torch
 import torch.nn.functional as F
@@ -230,8 +232,34 @@ def _extract_state_dict(checkpoint: object) -> dict[str, torch.Tensor]:
     raise ValueError("Could not find a valid state_dict in checkpoint")
 
 
+def _download_model_weights() -> None:
+    """Download model weights from external URL if not present locally."""
+    if WEIGHTS_PATH.exists():
+        return
+
+    model_url = os.getenv("MODEL_WEIGHTS_URL")
+    if not model_url:
+        raise RuntimeError(
+            "Model weights not found locally and no MODEL_WEIGHTS_URL environment variable set. "
+            "Please either: "
+            "1) Include the model in your deployment, "
+            "2) Set MODEL_WEIGHTS_URL to download from an external source (e.g., HuggingFace, Google Drive)"
+        )
+
+    print(f"Downloading model weights from {model_url}...")
+    WEIGHTS_PATH.parent.mkdir(parents=True, exist_ok=True)
+    
+    try:
+        urlretrieve(model_url, WEIGHTS_PATH)
+        print(f"Model downloaded successfully to {WEIGHTS_PATH}")
+    except Exception as e:
+        raise RuntimeError(f"Failed to download model from {model_url}: {str(e)}")
+
+
 @lru_cache(maxsize=1)
 def load_model() -> Model:
+    _download_model_weights()
+    
     if not WEIGHTS_PATH.exists():
         error_msg = f"Model weights not found at {WEIGHTS_PATH}. This usually means Git LFS files didn't download. Check deployment logs."
         print(f"ERROR: {error_msg}")

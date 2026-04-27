@@ -21,7 +21,12 @@ WORKDIR /app
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
-# Install backend dependencies
+# Install backend dependencies + git-lfs
+RUN apt-get update && apt-get install -y \
+    git-lfs \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy backend requirements
 COPY backend/requirements.txt /app/backend/requirements.txt
 RUN pip install --no-cache-dir -r /app/backend/requirements.txt
 
