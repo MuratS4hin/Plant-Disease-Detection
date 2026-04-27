@@ -233,7 +233,9 @@ def _extract_state_dict(checkpoint: object) -> dict[str, torch.Tensor]:
 @lru_cache(maxsize=1)
 def load_model() -> Model:
     if not WEIGHTS_PATH.exists():
-        raise FileNotFoundError(f"Model weights not found at {WEIGHTS_PATH}")
+        error_msg = f"Model weights not found at {WEIGHTS_PATH}. This usually means Git LFS files didn't download. Check deployment logs."
+        print(f"ERROR: {error_msg}")
+        raise FileNotFoundError(error_msg)
 
     model = Model().to(DEVICE)
     checkpoint = torch.load(WEIGHTS_PATH, map_location=DEVICE)
