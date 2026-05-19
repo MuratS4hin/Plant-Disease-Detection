@@ -33,6 +33,9 @@ RUN pip install --no-cache-dir -r /app/backend/requirements.txt
 # Copy backend source
 COPY backend /app/backend
 
+# Copy class map CSV used for label resolution
+COPY src/assets/class_map.csv /app/src/assets/class_map.csv
+
 # Copy built frontend assets
 COPY --from=frontend-build /app/dist /app/dist
 

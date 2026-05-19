@@ -36,7 +36,9 @@ npm run dev
 cd backend
 python -m venv venv
 source venv/bin/activate  # Windows: venv\Scripts\activate
-pip install -r requirements.txt
+pip install -r requirements.txt 
+    OR 
+python3 -m pip install -r requirements.txt
 python3 main.py
 # Plant Disease Detection - Pattern Recognition Project
 
